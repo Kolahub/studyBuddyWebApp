@@ -27,8 +27,18 @@ export function DashboardNav() {
 
   const handleSignOut = async () => {
     setLoading("signout");
-    await supabase.auth.signOut();
-    router.push("/");
+    try {
+      await supabase.auth.signOut();
+
+      // Use a short timeout to ensure auth state is updated
+      setTimeout(() => {
+        // Use replace instead of push to avoid history issues
+        router.replace("/");
+      }, 100);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setLoading(null);
+    }
   };
 
   const handleNavigation = (href: string) => {
@@ -73,6 +83,7 @@ export function DashboardNav() {
             className="w-full justify-start"
             onClick={() => handleNavigation(item.href)}
             disabled={loading === item.href}
+            suppressHydrationWarning
           >
             {loading === item.href ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -88,6 +99,7 @@ export function DashboardNav() {
         className="w-full justify-start mt-auto"
         onClick={handleSignOut}
         disabled={loading === "signout"}
+        suppressHydrationWarning
       >
         {loading === "signout" ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

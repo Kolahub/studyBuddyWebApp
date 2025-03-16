@@ -74,6 +74,8 @@ export default function SignUp() {
           user_id: data.user.id,
           name,
           email,
+          is_classified: false,
+          learning_speed: "moderate",
         },
       ]);
 
@@ -86,9 +88,9 @@ export default function SignUp() {
         description: "Welcome to Study Buddy! You can now log in.",
       });
 
-      // If we have a session, redirect to dashboard
+      // If we have a session, redirect to classification test
       if (data.session) {
-        router.replace("/dashboard");
+        router.replace("/classification-test");
       } else {
         // If email confirmation is required, show a different message
         toast({

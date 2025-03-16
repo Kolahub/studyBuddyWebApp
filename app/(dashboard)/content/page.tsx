@@ -25,6 +25,8 @@ import {
   Loader2,
   FileType,
   SortAsc,
+  Brain,
+  ChevronRight,
 } from "lucide-react";
 import { FileUpload } from "@/components/content/file-upload";
 import { SlideGrid } from "@/components/content/slide-grid";
@@ -38,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
+import Link from "next/link";
 
 export default function ContentPage() {
   const { supabase, session, isLoading } = useSupabase();
@@ -48,10 +51,40 @@ export default function ContentPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
   const [courses, setCourses] = useState<string[]>([]);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [connectionOK, setConnectionOK] = useState(true);
+  const [diagnoseResult, setDiagnoseResult] = useState<any>(null);
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isClassified, setIsClassified] = useState<boolean | null>(null);
   const [isFetchingSlides, setIsFetchingSlides] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState("newest");
   const [hasUserIdColumn, setHasUserIdColumn] = useState(false); // Track if user_id column exists
+
+  // Fetch user classification status
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!session) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .single();
+
+        if (error) throw error;
+
+        setUserProfile(data);
+        setIsClassified(data?.is_classified || false);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setIsClassified(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [session, supabase]);
 
   // Fetch all slides from the database with graceful fallback for missing user_id column
   const fetchAllSlides = async (retryCount = 0) => {
@@ -246,14 +279,16 @@ export default function ContentPage() {
     setCourseFilter(value === "all" ? "" : value);
   };
 
-  // Handle upload completion
-  const handleUploadComplete = (fileUrl: string, metadata: any) => {
-    toast({
-      title: "Upload complete",
-      description: "Your slide has been uploaded successfully.",
-    });
+  // Handle completed uploads
+  const handleUploadComplete = (uploadedSlide: any) => {
     setIsUploading(false);
-    fetchAllSlides(); // Refresh slides after upload
+    toast({
+      title: "Upload successful!",
+      description: "Your slides have been added to your content library.",
+    });
+
+    // Refresh slides
+    fetchAllSlides();
   };
 
   // Updated to handle missing user_id column
@@ -580,16 +615,87 @@ export default function ContentPage() {
     }
   }, [error]);
 
-  // If loading or no session, show fallback
-  if (isLoading || !session) {
+  // If loading, show loading state
+  if (isLoading) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          heading="Loading"
+          text="Please wait while we load your content..."
+        />
+        <div className="flex items-center justify-center min-h-[200px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  // If no session, show auth fallback
+  if (!session) {
     return <DashboardAuthFallback />;
+  }
+
+  // Show classification notice for unclassified users
+  if (isClassified === false) {
+    return (
+      <DashboardShell>
+        <DashboardHeader
+          heading="Learning Content"
+          text="Access your learning materials and resources"
+        />
+        <div className="mb-8">
+          <Alert className="bg-primary/10 border-primary">
+            <Brain className="h-5 w-5 text-primary" />
+            <AlertTitle className="text-lg font-semibold">
+              Complete Your Learning Style Assessment First
+            </AlertTitle>
+            <AlertDescription className="mt-2">
+              <p className="mb-4">
+                Before accessing personalized learning content, please take our
+                quick learning style assessment. This will help us tailor
+                content summaries, flashcards, and quizzes to your preferred
+                learning speed.
+              </p>
+              <Button asChild size="lg">
+                <Link href="/classification-test">
+                  Take Assessment Now <ChevronRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>Why Classification Matters</CardTitle>
+              <CardDescription>
+                The learning style assessment helps us provide the right level
+                of detail in your learning materials
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                After taking the assessment, you'll receive:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+                <li>Summaries tailored to your preferred level of detail</li>
+                <li>Flashcards optimized for your learning speed</li>
+                <li>Quizzes with appropriate difficulty and question count</li>
+                <li>
+                  A personalized learning dashboard with relevant analytics
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardShell>
+    );
   }
 
   return (
     <DashboardShell>
       <DashboardHeader
-        heading="Content Library"
-        text="Access and manage your learning materials"
+        heading="Learning Content"
+        text="Access your learning materials and resources"
       >
         <Button onClick={() => setIsUploading(!isUploading)}>
           <FileUp className="mr-2 h-4 w-4" />
@@ -633,17 +739,15 @@ export default function ContentPage() {
                 <Select
                   value={sortOrder}
                   onValueChange={(value) => {
-                    setSortOrder(value);
+                    setSortOrder(value as "asc" | "desc");
                   }}
                 >
                   <SelectTrigger className="w-[160px] outline-none focus-visible:ring-0">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="a-z">A-Z</SelectItem>
-                    <SelectItem value="z-a">Z-A</SelectItem>
+                    <SelectItem value="asc">Newest First</SelectItem>
+                    <SelectItem value="desc">Oldest First</SelectItem>
                   </SelectContent>
                 </Select>
 

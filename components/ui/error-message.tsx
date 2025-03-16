@@ -1,48 +1,45 @@
 import React from "react";
-import { AlertCircle, XCircle } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ErrorMessageProps {
-  message: string | null;
-  className?: string;
+  message: string;
   variant?: "default" | "destructive";
   onDismiss?: () => void;
+  className?: string;
 }
 
 export function ErrorMessage({
   message,
-  className,
   variant = "default",
   onDismiss,
+  className,
 }: ErrorMessageProps) {
-  if (!message) return null;
-
-  const variantClasses = {
-    default: "bg-muted/50 text-foreground",
-    destructive: "bg-destructive/10 text-destructive",
-  };
-
   return (
     <div
       className={cn(
-        "rounded-md p-4 flex items-start gap-3",
-        variantClasses[variant],
+        "flex items-center justify-between gap-2 rounded-md border p-4",
+        variant === "destructive"
+          ? "border-destructive/50 bg-destructive/10 text-destructive"
+          : "border-border bg-muted/50",
         className
       )}
-      role="alert"
     >
-      <AlertCircle className="h-5 w-5 shrink-0" />
-      <div className="flex-1">
-        <p className="text-sm">{message}</p>
+      <div className="flex items-center gap-2">
+        <AlertCircle className="h-5 w-5" />
+        <span>{message}</span>
       </div>
       {onDismiss && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5"
           onClick={onDismiss}
-          className="rounded-full hover:bg-background/50 p-1"
-          aria-label="Dismiss error"
         >
-          <XCircle className="h-5 w-5" />
-        </button>
+          <X className="h-4 w-4" />
+          <span className="sr-only">Dismiss</span>
+        </Button>
       )}
     </div>
   );
